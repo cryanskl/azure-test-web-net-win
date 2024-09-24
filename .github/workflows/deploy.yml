@@ -1,0 +1,37 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - main  # 触发工作流的分支
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest  # 使用 Windows 运行环境
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1  # 设置 MSBuild 环境
+
+      - name: Restore NuGet packages
+        run: nuget restore  # 还原 NuGet 包
+
+      - name: Build solution
+        run: msbuild /p:Configuration=Release  # 使用 MSBuild 构建项目
+
+      - name: Publish project
+        run: msbuild /p:DeployOnBuild=true /p:PublishProfile=FolderProfile /p:OutputPath=publish_output
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'zr-test-web'  # 替换为你的应用名称
+          slot-name: 'production'
+          publish-profile: ${{ secrets.AZURE_CREDENTIALS }}
+          package: publish_output  # 发布目录
+        environment:  # 添加环境配置
+          name: 'Production'  # 指定环境名称
+          url: ${{ steps.deploy-to-function.outputs.webapp-url }}  # 可选，指定环境的 URL
